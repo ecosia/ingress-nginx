@@ -350,6 +350,7 @@ func (n *NGINXController) getBackendServers(ingresses []*extensions.Ingress) ([]
 						loc.InfluxDB = anns.InfluxDB
 						loc.DefaultBackend = anns.DefaultBackend
 						loc.BackendProtocol = anns.BackendProtocol
+						loc.CustomHTTPErrors = anns.CustomHTTPErrors
 
 						if loc.Redirect.FromToWWW {
 							server.RedirectFromToWWW = true
@@ -390,6 +391,7 @@ func (n *NGINXController) getBackendServers(ingresses []*extensions.Ingress) ([]
 						InfluxDB:             anns.InfluxDB,
 						DefaultBackend:       anns.DefaultBackend,
 						BackendProtocol:      anns.BackendProtocol,
+						CustomHTTPErrors:     anns.CustomHTTPErrors,
 					}
 
 					if loc.Redirect.FromToWWW {
@@ -837,25 +839,36 @@ func (n *NGINXController) createServers(data []*extensions.Ingress,
 			if host == "" {
 				host = defServerName
 			}
-			if _, ok := servers[host]; ok {
-				// server already configured
-				continue
+
+			_, serverExists := servers[host]
+
+			if !serverExists {
+				servers[host] = &ingress.Server{
+					Hostname: host,
+					Locations: []*ingress.Location{
+						{
+							Path:         rootLocation,
+							IsDefBackend: true,
+							Backend:      un,
+							Proxy:        ngxProxy,
+							Service:      &apiv1.Service{},
+						},
+					},
+					SSLPassthrough: anns.SSLPassthrough,
+					SSLCiphers:     anns.SSLCiphers,
+				}
 			}
 
-			servers[host] = &ingress.Server{
-				Hostname: host,
-				Locations: []*ingress.Location{
-					{
-						Path:         rootLocation,
-						IsDefBackend: true,
-						Backend:      un,
-						Proxy:        ngxProxy,
-						Service:      &apiv1.Service{},
-					},
-				},
-				SSLPassthrough: anns.SSLPassthrough,
-				SSLCiphers:     anns.SSLCiphers,
+			// Build array of custom error locations that will be required
+			// for all ingresses on this host
+			for _, code := range anns.CustomHTTPErrors {
+				if servers[host].AllCustomHTTPErrors != nil {
+					servers[host].AllCustomHTTPErrors = append(servers[host].AllCustomHTTPErrors, code)
+				} else {
+					servers[host].AllCustomHTTPErrors = []int{code}
+				}
 			}
+
 		}
 	}
 

@@ -794,6 +794,33 @@ stream {
         {{ $server.ServerSnippet }}
         {{ end }}
 
+        {{ range $errCode := $server.AllCustomHTTPErrors }}
+            {{ $proxySetHeaders := $all.ProxySetHeaders }}
+            location @custom_{{ $errCode }} {
+                internal;
+
+                proxy_intercept_errors off;
+
+                proxy_set_header       X-Code             {{ $errCode }};
+                proxy_set_header       X-Format           $http_accept;
+                proxy_set_header       X-Original-URI     $request_uri;
+                proxy_set_header       X-Namespace        $namespace;
+                proxy_set_header       X-Ingress-Name     $ingress_name;
+                proxy_set_header       X-Service-Name     $service_name;
+                proxy_set_header       X-Service-Port     $service_port;
+                proxy_set_header       Host               $best_http_host;
+
+                set $proxy_upstream_name "upstream-default-backend";
+
+                rewrite                (.*) / break;
+
+                proxy_pass            http://upstream_balancer;
+                log_by_lua_block {
+                    monitor.call()
+                }
+            }
+        {{ end }}
+
         {{ $enforceRegex := enforceRegexModifier $server.Locations }}
         {{ range $location := $server.Locations }}
         {{ $path := buildLocation $location $enforceRegex }}
@@ -1148,6 +1175,15 @@ stream {
             proxy_set_header       X-Service-Name     $service_name;
             proxy_set_header       X-Service-Port     $service_port;
             {{ end }}
+
+            {{/* if a location-specific error override is set, add the proxy_intercept here */}}
+            {{ if $location.CustomHTTPErrors }}
+            # Custom error pages per ingress
+            proxy_intercept_errors on;
+            {{ end }}
+
+            {{ range $errCode := $location.CustomHTTPErrors }}
+            error_page {{ $errCode }} = @custom_{{ $errCode }};{{ end }}
 
             {{ if not (empty $location.Backend) }}
             {{ buildProxyPass $server.Hostname $all.Backends $location }}

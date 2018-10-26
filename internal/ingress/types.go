@@ -148,6 +148,8 @@ type Server struct {
 	SSLCiphers string `json:"sslCiphers,omitempty"`
 	// AuthTLSError contains the reason why the access to a server should be denied
 	AuthTLSError string `json:"authTLSError,omitempty"`
+	// AllCustomHTTPErrors contains an array of custom error codes for all locations
+	AllCustomHTTPErrors []int `json:allCustomHTTPErrors,omitempty`
 }
 
 // Location describes an URI inside a server.
@@ -251,6 +253,9 @@ type Location struct {
 	// BackendProtocol indicates which protocol should be used to communicate with the service
 	// By default this is HTTP
 	BackendProtocol string `json:"backend-protocol"`
+	// DefaultBackend allows the use of a custom default backend for this location.
+	// +optional
+	CustomHTTPErrors []int `json:"custom-http-errors"`
 }
 
 // SSLPassthroughBackend describes a SSL upstream server configured
