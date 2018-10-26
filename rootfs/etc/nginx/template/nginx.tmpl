@@ -551,7 +551,7 @@ http {
         {{ $cfg.ServerSnippet }}
         {{ end }}
 
-        {{ template "CUSTOM_ERRORS" $all }}
+        {{ template "CUSTOM_ERRORS" (buildCustomErrorDeps $all.ProxySetHeaders $cfg.CustomHTTPErrors) }}
     }
     ## end server {{ $server.Hostname }}
 
@@ -653,7 +653,7 @@ http {
             proxy_pass          http://upstream_balancer;
         }
 
-        {{ template "CUSTOM_ERRORS" $all }}
+        {{ template "CUSTOM_ERRORS" (buildCustomErrorDeps $all.ProxySetHeaders $cfg.CustomHTTPErrors) }}
     }
 }
 
@@ -672,7 +672,7 @@ stream {
 {{/* definition of templates to avoid repetitions */}}
 {{ define "CUSTOM_ERRORS" }}
         {{ $proxySetHeaders := .ProxySetHeaders }}
-        {{ range $errCode := .Cfg.CustomHTTPErrors }}
+        {{ range $errCode := .ErrorCodes }}
         location @custom_{{ $errCode }} {
             internal;
 
@@ -794,32 +794,7 @@ stream {
         {{ $server.ServerSnippet }}
         {{ end }}
 
-        {{ range $errCode := $server.AllCustomHTTPErrors }}
-            {{ $proxySetHeaders := $all.ProxySetHeaders }}
-            location @custom_{{ $errCode }} {
-                internal;
-
-                proxy_intercept_errors off;
-
-                proxy_set_header       X-Code             {{ $errCode }};
-                proxy_set_header       X-Format           $http_accept;
-                proxy_set_header       X-Original-URI     $request_uri;
-                proxy_set_header       X-Namespace        $namespace;
-                proxy_set_header       X-Ingress-Name     $ingress_name;
-                proxy_set_header       X-Service-Name     $service_name;
-                proxy_set_header       X-Service-Port     $service_port;
-                proxy_set_header       Host               $best_http_host;
-
-                set $proxy_upstream_name "upstream-default-backend";
-
-                rewrite                (.*) / break;
-
-                proxy_pass            http://upstream_balancer;
-                log_by_lua_block {
-                    monitor.call()
-                }
-            }
-        {{ end }}
+        {{ template "CUSTOM_ERRORS" (buildCustomErrorDeps $all.ProxySetHeaders $server.AllCustomHTTPErrors) }}
 
         {{ $enforceRegex := enforceRegexModifier $server.Locations }}
         {{ range $location := $server.Locations }}

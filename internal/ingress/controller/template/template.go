@@ -159,6 +159,7 @@ var (
 		"buildInfluxDB":               buildInfluxDB,
 		"enforceRegexModifier":        enforceRegexModifier,
 		"stripLocationModifer":        stripLocationModifer,
+		"buildCustomErrorDeps":        buildCustomErrorDeps,
 	}
 )
 
@@ -955,4 +956,16 @@ func proxySetHeader(loc interface{}) string {
 	}
 
 	return "proxy_set_header"
+}
+
+// buildCustomErrorDeps is a utility function returning a struct wrapper with
+// the data required to build the 'CUSTOM_ERRORS' template
+func buildCustomErrorDeps(proxySetHeaders map[string]string, errorCodes []int) interface{} {
+	return struct {
+		ProxySetHeaders map[string]string
+		ErrorCodes      []int
+	}{
+		ProxySetHeaders: proxySetHeaders,
+		ErrorCodes:      errorCodes,
+	}
 }
