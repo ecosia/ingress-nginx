@@ -210,8 +210,6 @@ func buildLuaSharedDictionaries(s interface{}, disableLuaRestyWAF bool) string {
 		"lua_shared_dict configuration_data 5M",
 		"lua_shared_dict certificate_data 16M",
 		"lua_shared_dict locks 512k",
-		"lua_shared_dict balancer_ewma 1M",
-		"lua_shared_dict balancer_ewma_last_touched_at 1M",
 		"lua_shared_dict sticky_sessions 1M",
 	}
 
@@ -723,19 +721,6 @@ func buildUpstreamName(loc interface{}) string {
 	upstreamName := location.Backend
 
 	return upstreamName
-}
-
-// TODO: Needs Unit Tests
-func isSticky(host string, loc *ingress.Location, stickyLocations map[string][]string) bool {
-	if _, ok := stickyLocations[host]; ok {
-		for _, sl := range stickyLocations[host] {
-			if sl == loc.Path {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func buildNextUpstream(i, r interface{}) string {
